@@ -1,5 +1,4 @@
 from multiprocessing import Pool
-from adb import ADB
 from PIL import Image
 import pytesseract
 import glob
