@@ -113,38 +113,45 @@ def NegativeCheck(questionString, answers):
 			keyword = qWords[sIndex + 1].replace('?', '')
 
 
-def WikipediaCheck(questionString, answers, keyword):
+def GetWikiScore(questionString, answer, keyword):
 
-	answerScore = []
+	pAnswer = urllib.parse.quote(answer)
 
-	for answer in answers:
+	urlString = "https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch={}&utf8=".format(
+		pAnswer)
 
-		pAnswer = urllib.parse.quote(answer)
+	with urllib.request.urlopen(urlString) as url:
+		encJson = json.loads(url.read().decode())
 
-		urlString = "https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch={}&utf8=".format(
-			pAnswer)
+	if encJson['query']['searchinfo']['totalhits'] > 0:
+		wikiPageName = encJson['query']['search'][0]['title']
+		pWikiName = urllib.parse.quote(wikiPageName)
+		urlString = "https://en.wikipedia.org/w/api.php?action=query&titles={}&format=json&prop=revisions&rvprop=content&formatversion=2".format(
+			pWikiName)
 
 		with urllib.request.urlopen(urlString) as url:
 			encJson = json.loads(url.read().decode())
 
-		if encJson['query']['searchinfo']['totalhits'] > 0:
-			wikiPageName = encJson['query']['search'][0]['title']
-			pWikiName = urllib.parse.quote(wikiPageName)
-			urlString = "https://en.wikipedia.org/w/api.php?action=query&titles={}&format=json&prop=revisions&rvprop=content&formatversion=2".format(
-				pWikiName)
+		text = encJson['query']['pages'][0]['revisions'][0]['content'].lower()
 
-			with urllib.request.urlopen(urlString) as url:
-				encJson = json.loads(url.read().decode())
+		return text.count(keyword)
 
-			text = encJson['query']['pages'][0]['revisions'][0]['content'].lower()
+	else:
+		return 0
 
-			answerScore.append(text.count(keyword))
 
-		else:
-			answerScore.append(0)
-			pass
+# def WikipediaCheck(questionString, answers, keyword):
 
-	return answerScore
+# 	wikiList = []
+
+# 	for answer in answers:
+# 		wikiList.append([keyword, answer])
+
+# 	p = Pool(5)
+
+# 	answerScore = p.map(GetWikiScore, wikiList)
+
+# 	return answerScore
 
 
 def getLatest():
@@ -160,7 +167,7 @@ def getText(file):
 	left = 44
 	top = 310
 	width = 1000
-	height = 800
+	height = 900
 	box = (left, top, left+width, top+height)
 	im = im.crop(box)
 
@@ -219,75 +226,17 @@ def getText(file):
 	return data
 
 
-
-
-# def getText(file):
-
-# 	im = Image.open(file)
-
-# 	left = 44
-# 	top = 310
-# 	width = 1000
-# 	height = 800
-# 	box = (left, top, left+width, top+height)
-# 	im = im.crop(box)
-
-# 	GrayImg = im.convert('L')
-# 	BlackWhite = GrayImg.point(lambda x: 0 if x<220 else 255, '1')
-
-# 	# BlackWhite.save('testbw.jpg', 'jpeg')
-
-
-# 	text = pytesseract.image_to_string(BlackWhite)
-# 	text2 = text.split('\n')
-
-# 	leng = len(text2)
-
-# 	i = 0
-# 	ii = 0
-
-# 	questionString = ''
-
-# 	while i < leng:
-# 		questionString += text2[i]
-# 		if('?' in text2[i]):
-# 			ii = i + 1
-# 			i = leng
-# 		else:
-# 			questionString += ' '
-# 		i+=1
-# 	questionString = questionString.encode('ascii', 'ignore').decode('ascii')
-
-# 	answers = []
-# 	while ii < leng and len(answers) < 3:
-# 		if len(text2[ii]) > 0:
-# 			answers.append(text2[ii].encode('ascii', 'ignore').decode('ascii').lower())
-# 		ii += 1
-
-# 	data = {}
-# 	data['questionString'] = questionString
-# 	data['answers'] = answers
-
-# 	return data
-
 check_types = {
 	"google": GoogleCheck,
 	"bing": BingCheck,
 	# "negative": NegativeCheck,
-	"wiki": WikipediaCheck
+	"wiki": GetWikiScore
 }
 
 def check_method(params):
 	check_type, questionString, answers, keyword = params
-	result = check_types.get(check_type)(questionString, answers, keyword)
-	print(result)
-	i = 0
-	answer = "----- %s ---- \n" % check_type
-	while i < 3:
-		answer += "{}: {}".format(answers[i], result[i]) + "\n"
-		i += 1
-
-	print(answer)
+	result = { 'type' : check_type, 'answers' : answers, 'data' : check_types.get(check_type)(questionString, answers, keyword) }
+	return result
 
 
 def searchFor(data):
@@ -308,8 +257,18 @@ def searchFor(data):
 
 	keyword = input('keyword: ')
 	for check in checks_to_run:
-		check_params.append((check, questionString, answers, keyword))
-	p.map(check_method, check_params)
+		if(check != 'wiki'):
+			check_params.append((check, questionString, answers, keyword))
+
+	i = 0
+	while i < 3:
+		check_params.append(['wiki', questionString, answers[i], keyword])
+		i += 1
+
+	result = p.map(check_method, check_params)
+
+	PrintData(result)
+
 
 
 
@@ -317,4 +276,46 @@ def Go():
 	os.system('adb shell screencap -p > image.png')
 	searchFor(getText('image.png'))
 
-Go()
+
+def PrintData(data):
+
+	wikiAnswers = {}
+
+	for entry in data:
+		if entry['type'] == 'google':
+			answers = entry['answers']
+			google = entry['data']
+			# google
+
+		elif entry['type'] == 'bing':
+			bing = entry['data']
+
+		elif entry['type'] == 'wiki':
+			wikiAnswers[entry['answers']] = entry['data']
+			# wiki
+
+	
+	print('--------Bing---------')
+	i = 0
+	while i < 3:
+		print(answers[i] + ": " + str(bing[i]))
+		i += 1
+
+	print('')
+
+
+	print('--------Google---------')
+	i = 0
+	while i < 3:
+		print(answers[i] + ": " + str(google[i]))
+		i += 1
+
+
+	print('')
+	
+	print('--------Wiki---------')
+	i = 0
+	while i < 3:
+		print(answers[i] + ": " + str(wikiAnswers[answers[i]]))
+		i += 1
+	
