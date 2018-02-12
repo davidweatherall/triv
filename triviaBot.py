@@ -175,7 +175,7 @@ def getText(file):
 	left = 44
 	top = 310
 	width = 1000
-	height = 900
+	height = 1000
 	box = (left, top, left+width, top+height)
 	im = im.crop(box)
 
@@ -223,7 +223,7 @@ def getText(file):
 
 	answers = []
 	while ii < leng and len(answers) < 3:
-		if len(text2[ii]) > 0:
+		if len(text2[ii]) > 0 and "prize" not in text2[ii].encode('ascii', 'ignore').decode('ascii').lower():
 			answers.append(text2[ii].encode('ascii', 'ignore').decode('ascii').lower())
 		ii += 1
 
@@ -278,17 +278,17 @@ def searchFor(data):
 		if check != 'wiki' and check != 'wikipage':
 			check_params.append((check, questionString, answers, keyword))
 
-	i = 0
-	while i < 3:
-		check_params.append(['wiki', questionString, answers[i], keyword])
-		i += 1
+	if keyword:
+		i = 0
+		while i < 3:
+			check_params.append(['wiki', questionString, answers[i], keyword])
+			i += 1
 
-	i = 0
-	while i < 3:
-		check_params.append(['wikipage', questionString, wikiPageSearch, answers[i]])
-		i += 1
-
-	print(check_params)
+	if wikiPageSearch:
+		i = 0
+		while i < 3:
+			check_params.append(['wikipage', questionString, wikiPageSearch, answers[i]])
+			i += 1
 
 	result = p.map(check_method, check_params)
 
@@ -303,8 +303,6 @@ def Go():
 
 
 def PrintData(data):
-
-	print(data)
 
 	wikiAnswers = {}
 	wikiPageAnswers = {}
@@ -344,14 +342,16 @@ def PrintData(data):
 
 	print('')
 	
-	print('--------Wiki Keyword Check---------')
-	i = 0
-	while i < 3:
-		print(answers[i] + ": " + str(wikiAnswers[answers[i]]))
-		i += 1
+	if wikiAnswers:
+		print('--------Wiki Keyword Check---------')
+		i = 0
+		while i < 3:
+			print(answers[i] + ": " + str(wikiAnswers[answers[i]]))
+			i += 1
 	
-	print('------ Wiki Page Check ---------')
-	i = 0
-	while i < 3:
-		print(answers[i] + ": " + str(wikiPageAnswers[answers[i]]))
-		i += 1
+	if wikiPageAnswers:
+		print('------ Wiki Page Check ---------')
+		i = 0
+		while i < 3:
+			print(answers[i] + ": " + str(wikiPageAnswers[answers[i]]))
+			i += 1
