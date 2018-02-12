@@ -34,9 +34,9 @@ def BingCheck(query, answers, keyword):
 	result = BingWebSearch(query).read().decode('utf-8').encode('ascii', 'ignore').decode('ascii')
 	a = json.loads(result)
 
-	f = open('abc', 'w')
-	f.write(result)
-	f.close()
+	# f = open('abc', 'w')
+	# f.write(result)
+	# f.close()
 
 
 	if isinstance(answers, list):
@@ -115,13 +115,19 @@ def NegativeCheck(questionString, answers):
 
 def GetWikiScore(questionString, answer, keyword):
 
+	keyword = keyword.lower()
+
 	pAnswer = urllib.parse.quote(answer)
 
 	urlString = "https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch={}&utf8=".format(
 		pAnswer)
 
 	with urllib.request.urlopen(urlString) as url:
-		encJson = json.loads(url.read().decode())
+		wikiText = url.read().decode()
+
+	encJson = encJson = json.loads(wikiText)
+
+
 
 	if encJson['query']['searchinfo']['totalhits'] > 0:
 		wikiPageName = encJson['query']['search'][0]['title']
@@ -130,9 +136,11 @@ def GetWikiScore(questionString, answer, keyword):
 			pWikiName)
 
 		with urllib.request.urlopen(urlString) as url:
-			encJson = json.loads(url.read().decode())
+			wikiContent = url.read().decode()
 
-		text = encJson['query']['pages'][0]['revisions'][0]['content'].lower()
+		encJson2 = json.loads(wikiContent)
+
+		text = encJson2['query']['pages'][0]['revisions'][0]['content'].lower()
 
 		return text.count(keyword)
 
@@ -230,12 +238,13 @@ check_types = {
 	"google": GoogleCheck,
 	"bing": BingCheck,
 	# "negative": NegativeCheck,
-	"wiki": GetWikiScore
+	"wiki": GetWikiScore,
+	"wikipage": GetWikiScore,
 }
 
 def check_method(params):
 	check_type, questionString, answers, keyword = params
-	result = { 'type' : check_type, 'answers' : answers, 'data' : check_types.get(check_type)(questionString, answers, keyword) }
+	result = { 'type' : check_type, 'answers' : answers, 'data' : check_types.get(check_type)(questionString, answers, keyword), 'keyword': keyword }
 	return result
 
 
@@ -256,14 +265,30 @@ def searchFor(data):
 	print(answers[2])
 
 	keyword = input('keyword: ')
+	splitword = input('split word: ')
+	wikiPageSearch = input('wiki page search: ')
+
+	i = 0
+	if splitword: 
+		while i <3:
+			answers[i] = answers[i].split(splitword)[0]
+			i += 1
+
 	for check in checks_to_run:
-		if(check != 'wiki'):
+		if check != 'wiki' and check != 'wikipage':
 			check_params.append((check, questionString, answers, keyword))
 
 	i = 0
 	while i < 3:
 		check_params.append(['wiki', questionString, answers[i], keyword])
 		i += 1
+
+	i = 0
+	while i < 3:
+		check_params.append(['wikipage', questionString, wikiPageSearch, answers[i]])
+		i += 1
+
+	print(check_params)
 
 	result = p.map(check_method, check_params)
 
@@ -279,7 +304,10 @@ def Go():
 
 def PrintData(data):
 
+	print(data)
+
 	wikiAnswers = {}
+	wikiPageAnswers = {}
 
 	for entry in data:
 		if entry['type'] == 'google':
@@ -293,6 +321,9 @@ def PrintData(data):
 		elif entry['type'] == 'wiki':
 			wikiAnswers[entry['answers']] = entry['data']
 			# wiki
+
+		elif entry['type'] == 'wikipage':
+			wikiPageAnswers[entry['keyword']] = entry['data']
 
 	
 	print('--------Bing---------')
@@ -313,9 +344,14 @@ def PrintData(data):
 
 	print('')
 	
-	print('--------Wiki---------')
+	print('--------Wiki Keyword Check---------')
 	i = 0
 	while i < 3:
 		print(answers[i] + ": " + str(wikiAnswers[answers[i]]))
 		i += 1
 	
+	print('------ Wiki Page Check ---------')
+	i = 0
+	while i < 3:
+		print(answers[i] + ": " + str(wikiPageAnswers[answers[i]]))
+		i += 1
