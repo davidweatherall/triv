@@ -13,6 +13,18 @@ import base64
 from apiKeys import apiKeys
 
 
+def cleanResult(result):
+	replaceArray = [
+		['-', ' ']
+	]
+	for a in replaceArray:
+		result = result.replace(a[0], a[1])
+
+	if result[len(result)-1] == ' ':
+		result = result[:-1]
+
+	return result.lower()
+
 def BingWebSearch(search):
 
 	bingKey = apiKeys['bing']
@@ -51,9 +63,9 @@ def BingCheck(query, answers, keyword):
 
 
 			while i < 3:
-				if answers[i].lower() in name.lower():
+				if answers[i].lower() in cleanResult(name):
 					answerScore[i] += 1
-				if answers[i].lower() in snippet.lower():
+				if answers[i].lower() in cleanResult(snippet):
 					answerScore[i] += 1
 
 				i += 1
@@ -92,9 +104,9 @@ def GoogleCheck(questionString, answers, keyword):
 	for result in encJson['items']:
 		i = 0
 		while i < 3:
-			if answers[i] in result['snippet'].lower():
+			if answers[i] in cleanResult(result['snippet']):
 				answerScore[i] += 1
-			if answers[i] in result['title'].lower():
+			if answers[i] in cleanResult(result['title']):
 				answerScore[i] += 1
 
 			i += 1
@@ -140,27 +152,16 @@ def GetWikiScore(questionString, answer, keyword):
 
 		encJson2 = json.loads(wikiContent)
 
-		text = encJson2['query']['pages'][0]['revisions'][0]['content'].lower()
+		text = cleanResult(encJson2['query']['pages'][0]['revisions'][0]['content'])
+
+		# f = open('abc', 'w')
+		# f.write(text.encode('ascii', 'ignore').decode('ascii'))
+		# f.close()
 
 		return text.count(keyword)
 
 	else:
 		return 0
-
-
-# def WikipediaCheck(questionString, answers, keyword):
-
-# 	wikiList = []
-
-# 	for answer in answers:
-# 		wikiList.append([keyword, answer])
-
-# 	p = Pool(5)
-
-# 	answerScore = p.map(GetWikiScore, wikiList)
-
-# 	return answerScore
-
 
 def getLatest():
 	list_of_files = glob.glob('/home/david/Downloads/*')
@@ -224,7 +225,7 @@ def getText(file):
 	answers = []
 	while ii < leng and len(answers) < 3:
 		if len(text2[ii]) > 0 and "prize" not in text2[ii].encode('ascii', 'ignore').decode('ascii').lower():
-			answers.append(text2[ii].encode('ascii', 'ignore').decode('ascii').lower())
+			answers.append(cleanResult(text2[ii].encode('ascii', 'ignore').decode('ascii')))
 		ii += 1
 
 	data = {}
