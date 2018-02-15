@@ -1,6 +1,5 @@
 from multiprocessing import Pool
 from PIL import Image
-import pytesseract
 import glob
 import os
 import time
