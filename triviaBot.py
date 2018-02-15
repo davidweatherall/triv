@@ -100,17 +100,20 @@ def GoogleCheck(questionString, answers, keyword):
 
 	answerScore = [0, 0, 0]
 
-	for result in encJson['items']:
-		i = 0
-		while i < 3:
-			if answers[i] in cleanResult(result['snippet']):
-				answerScore[i] += 1
-			if answers[i] in cleanResult(result['title']):
-				answerScore[i] += 1
+	if 'items' in encJson:
+		for result in encJson['items']:
+			i = 0
+			while i < 3:
+				if answers[i] in cleanResult(result['snippet']):
+					answerScore[i] += 1
+				if answers[i] in cleanResult(result['title']):
+					answerScore[i] += 1
 
-			i += 1
+				i += 1
 
-	return answerScore
+		return answerScore
+	else:
+		return ['Error', 'Error', 'Error']
 
 
 def NegativeCheck(questionString, answers):
