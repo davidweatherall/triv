@@ -185,23 +185,7 @@ def getText(file):
 
 	BlackWhite.save('testbw.jpg', 'jpeg')
 
-
-	with open('testbw.jpg', "rb") as image_file:
-	    encoded_string = base64.b64encode(image_file.read())
-
-	data = {
-	'apikey' : apiKeys['ocr'],
-	'base64Image' : 'data:image/png;base64,' + encoded_string.decode('utf-8')
-	}
-	data = bytes( urllib.parse.urlencode( data ).encode() )
-	handler = urllib.request.urlopen( 'https://api.ocr.space/parse/image', data );
-	result = handler.read().decode( 'utf-8' );
-
-	a = result
-
-	b = json.loads(a)
-
-	text = b['ParsedResults'][0]['ParsedText'].replace('\r', '')
+	text = ocrImage('testbw.jpg')
 
 	text2 = text.split('\n')
 
@@ -356,3 +340,50 @@ def PrintData(data):
 		while i < 3:
 			print(answers[i] + ": " + str(wikiPageAnswers[answers[i]]))
 			i += 1
+
+
+
+def encode_image(image_path, charset):
+	with open(image_path, 'rb') as image:
+		b64_img = base64.b64encode(image.read())
+
+	return b64_img.decode(charset)
+
+
+def get_response(b64encoded_image):
+	req_url = '/v1/images:annotate?key=' + apiKeys['googlevision']
+
+	req_body = {
+	  "requests": [
+		{
+		  "image": {
+			"content": b64encoded_image
+		  },
+		  "features": [
+			{
+			  "type": "TEXT_DETECTION"
+			}
+		  ]
+		}
+	  ]
+	}
+
+	req_headers = {"Content-Type": "application/json; charset=utf-8"}
+
+
+	host = 'vision.googleapis.com'
+
+	conn = http.client.HTTPSConnection(host)
+	# query = urllib.parse.quote(search)
+	conn.request("POST", req_url, headers=req_headers, body=json.dumps(req_body))
+	response = conn.getresponse()
+
+	return response
+
+
+def ocrImage(local_image_path):
+	body = get_response(encode_image(local_image_path, 'ascii')).read().decode('utf-8').encode('ascii', 'ignore').decode('ascii')
+
+	a = json.loads(body)
+
+	return a['responses'][0]['textAnnotations'][0]['description']
